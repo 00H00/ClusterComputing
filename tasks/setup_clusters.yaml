@@ -1,0 +1,104 @@
+- hosts: slaves
+  become: yes
+  tasks:
+    - name: Make IPAddressDeny Invalid
+      lineinfile:
+        dest: /lib/systemd/system/systemd-logind.service
+        state: present
+        backrefs: yes
+        regexp: '^IPAddressDeny=any$'
+        line: '#IPAddressDeny=any'
+    - name: Reload daemon program
+      shell: systemctl daemon-reload
+
+
+- hosts: master
+  become: yes
+  tasks:
+    - name: Install NIS tool
+      apt:
+        name: nis
+        state: present
+
+    - name: Set /etc/default/nis for NIS Server
+      lineinfile:
+        dest: /etc/default/nis
+        state: present
+        backrefs: yes
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+      with_items:
+        - regexp: 'NISSERVER=.*'
+          line: 'NISSERVER=master'
+        - regexp: 'NISCLIENT=.*'
+          line: 'NISCLIENT=false'
+    - name: Copy defaultdomain from local file
+      copy:
+        src: ../conf/defaultdomain
+        dest: /etc/defaultdomain
+        mode: 644
+
+    - name: Set /etc/yp.conf for NIS Server
+      lineinfile:
+        dest: /etc/yp.conf
+        state: present
+        backrefs: yes
+        regexp: '# ypserver ypserver.network.com'
+        line: 'ypserver 192.168.1.1'
+
+    - name: Change /etc/ypserv.securents for security
+      lineinfile:
+        dest: /etc/ypserv.securenets
+        state: present
+        backrefs: yes
+        regexp: '^0\.0\.0\.0\s*0\.0\.0\.0$'
+        line: '255.255.255.0 192.168.1.0'
+
+- hosts: slaves
+  become: yes
+  tasks:
+    - name: Install NIS tool for slaves
+      apt:
+        name: nis
+        state: present
+    - name: Modify the domain name for NIS
+      copy:
+        src: ../conf/defaultdomain
+        dest: /etc/defaultdomain
+        mode: 644
+
+    - name: "Set /etc/yp.conf for slaves"
+      lineinfile:
+        dest: /etc/yp.conf
+        state: present
+        backrefs: yes
+        regexp: '# ypserver ypserver.network.com'
+        line: 'domain zibet000.nis server 192.168.1.1'
+
+    - name: "Set /etc/nsswitch.conf for slaves"
+      lineinfile:
+        dest: /etc/nsswitch.conf
+        state: present
+        backrefs: yes
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+      with_items:
+        - regexp: '^passwd:\s*files systemd$'
+          line: 'passwd: nis files systemd'
+        - regexp: '^group:\s*files systemd$'
+          line: 'group:  nis files systemd'
+        - regexp: '^shadow:\s*files systemd$'
+          line: 'shadow: nis files systemd'
+        - regexp: '^hosts:\s*files mdns4_minimal \[NOTFOUND=return\] dns$'  
+          line: 'hosts:  nis files mdns4_minimal [NOTFOUND=return] dns'
+
+- hosts: all
+  become: yes
+  tasks:
+    - name: Restart NIS system
+      shell: systemctl restart rpcbind nis
+- hosts: master
+  become: yes
+  tasks:
+   - name: Update NIS db
+     shell: /usr/lib/yp/ypinit -m

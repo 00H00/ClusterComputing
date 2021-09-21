@@ -1,0 +1,4 @@
+# The below directory is shared by clusters via NFS server
+/home 192.168.1.1/24(rw,async)
+/usr/local 192.168.1.0/24(ro)
+/opt 192.168.1.0/24(ro)

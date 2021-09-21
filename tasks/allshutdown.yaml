@@ -1,0 +1,5 @@
+- hosts: slaves
+  become: yes
+  tasks:
+    - name: shutdown clusters
+      command: /usr/sbin/shutdown now

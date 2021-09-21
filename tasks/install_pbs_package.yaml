@@ -1,0 +1,24 @@
+- hosts: master
+  become: yes
+  vars_files:
+    - ../vars/package_pbs.yaml
+  tasks:
+    - name: Install tools for master
+      apt:
+        name: "{{ item.package }}"
+        state: "{{ item.state }}"
+      with_items:
+        - "{{ package_list_master }}"
+
+- hosts: all
+  become: yes
+  vars_files:
+    - ../vars/package_pbs.yaml
+  tasks:
+    - name: Install tools for all nodes
+      apt:
+        name: "{{ item.package }}"
+        state: "{{ item.state }}"
+      with_items:
+        - "{{ package_list_common }}"
+

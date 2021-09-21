@@ -1,0 +1,20 @@
+- hosts: master
+  become: no
+  tasks:
+    - name: create directory /home/z-user/pbs
+      file:
+        path: /home/z-user/pbs
+        state: directory
+        mode: 0775
+    - name: git clone pbs
+      git:
+        repo: https://github.com/openpbs/openpbs.git
+        dest: /home/z-user/pbs
+        #- name: git
+        #shell: git clone https://github.com/openpbs/openpbs.git /home/z-user/pbs
+    - name: autogen.sh
+      shell: /home/z-user/pbs/autogen.sh
+    - name: configure
+      shell: /home/z-user/pbs/configure -prefix=/opt/pbs
+    - name: make
+      shell: make /home/z-user/pbs/Makefile.am

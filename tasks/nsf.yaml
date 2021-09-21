@@ -1,0 +1,37 @@
+- hosts: master
+  become: yes
+  tasks:
+    - name: Install NFS
+      apt:
+        name: nfs-kernel-server
+        state: present
+
+    - name: Copy /etc/exports from local template
+      copy:
+        src: ../conf/exports
+        dest: /etc/exports
+        mode: 644
+
+    - name: Restart NFS Server
+      shell: systemctl restart nfs-kernel-server
+
+- hosts: slaves
+  become: yes
+  tasks:
+    - name: Install NFS for slaves
+      apt:
+        name: nfs-common
+        state: present
+
+    - name: Set /etc/fstab
+      blockinfile:
+        dest: /etc/fstab
+        insertafter: "^# below files are to be shared"
+        content: |
+          192.168.1.1:/home/share /home/share  nfs defaults 0 0
+          192.168.1.1:/usr/local  /usr/local   nfs defaults 0 0
+          192.168.1.1:/opt        /opt         nfs defaults 0 0
+
+    - name: Mount directory
+      shell: mount -a # ansible.posix.mount exists
+
